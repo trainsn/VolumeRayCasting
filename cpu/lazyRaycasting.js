@@ -3,7 +3,7 @@
 var img = document.getElementById("slice");
 
 img.onload = render;
-img.src = "./water.png";
+img.src = "./bonsai.png";
 
 function render(){
 	var canvas = document.getElementById("canvas");
@@ -12,20 +12,22 @@ function render(){
 	canvas.height = img.height;
 	canvas.width = img.width;
 
-	var zSize = canvas.height / canvas.width;
+	var numPerRow = 16;
+	var numPerCol = 16;
+	var zSize = numPerRow * numPerCol;
 
 	var cutCanvas = document.getElementById("cut");
 	var cutContext = cutCanvas.getContext("2d");
 
-	cutCanvas.height = img.width;
-	cutCanvas.width = img.width * Math.sqrt(2);
+	cutCanvas.height = img.width / numPerRow;
+	cutCanvas.width = img.width / numPerRow * Math.sqrt(2);
 
 	context.drawImage(img, 0, 0);
 
 
 	var imageData = context.getImageData(0, 0, canvas.width, canvas.height);
 
-	var imageSize = img.width;
+	var imageSize = img.width / numPerRow;
 
 	var volumes = [];
 	var volumeSize = (imageData.data.length/imageSize)/4;
@@ -38,10 +40,14 @@ function render(){
 		}*/
 	}
 
-	for(var x = 0; x < imageSize; x++){
-		for(var y = 0; y < imageSize; y++){
-			for(var z = 0; z < imageSize; z++){
-				volumes[z][x+y*imageSize] = imageData.data[(x+z*imageSize+y*imageSize*imageSize)*4];
+	for(var y = 0; y < imageSize; y++){
+		for(var z = 0; z < imageSize; z++){		
+			for(var x = 0; x < imageSize; x++){
+				oriX = x + imageSize*(y%numPerRow);
+				oriY = Math.round(y/numPerRow);
+				oriZ = z; 
+				volumes[z][x+y*imageSize] = imageData.data[(oriX+oriZ*imageSize*numPerRow+oriY*imageSize*imageSize*numPerRow)*4];
+				//volumes[z][x+y*imageSize] = imageData.data[(x+z*imageSize+y*imageSize*imageSize)*4];
 			}
 		}
 	}
@@ -52,7 +58,7 @@ function render(){
 	var startTime = Date.now();
 	var turnsPerSecond = 0.1;
 	
-	var rayLength = img.width * Math.sqrt(2);
+	var rayLength = img.width / numPerRow * Math.sqrt(2);
 	var samplingRate = 1;
 	var sampleCount = samplingRate*rayLength;
 	var sampleDistance = rayLength/sampleCount;
@@ -107,8 +113,8 @@ function render(){
 		var angle = ((Date.now()-startTime)/1000)*(2*Math.PI*turnsPerSecond)+startAngle;
 		
 		var increment = [Math.sin(angle)*sampleDistance, Math.cos(angle)*sampleDistance*1.4];
-		var baseX = Math.sin(angle)*rayLength/2 + img.width/2;
-		var baseY = Math.cos(angle)*rayLength/2 + img.width/2;
+		var baseX = Math.sin(angle)*rayLength/2 + img.width/numPerRow/2;
+		var baseY = Math.cos(angle)*rayLength/2 + img.width/numPerRow/2;
 		var cosAngle = Math.cos(angle);
 		var sinAngle = Math.sin(angle);
 
@@ -150,7 +156,7 @@ function render(){
 				var v = 0.0;
 				var a = 0.0;
 				
-				for(var i = 1; i < sampleCounts[s]; i++){
+				for(var i = 1; i < sampleCounts[s]; i+=1){
 					
 					x = ~~(pos[0] + i*increment[0]);
 					y = ~~(pos[1] + i*increment[1]);
