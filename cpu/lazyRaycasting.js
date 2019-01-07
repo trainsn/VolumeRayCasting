@@ -1,9 +1,11 @@
 
 
 var img = document.getElementById("slice");
+var color = document.getElementById("color");
 
 img.onload = render;
 img.src = "./bonsai.png";
+color.src = "./bonsai_tf.png"
 
 function render(){
 	var canvas = document.getElementById("canvas");
@@ -11,6 +13,12 @@ function render(){
 
 	canvas.height = img.height;
 	canvas.width = img.width;
+
+	var canvas_cl = document.getElementById("canvas_cl");
+	var context_cl = canvas_cl.getContext("2d");
+
+	canvas_cl.height = color.height;
+	canvas_cl.width = color.width;
 
 	var numPerRow = 16;
 	var numPerCol = 16;
@@ -26,15 +34,21 @@ function render(){
 
 
 	var imageData = context.getImageData(0, 0, canvas.width, canvas.height);
+	var colorData = context_cl.getImageData(0, 0, canvas_cl.width, canvas_cl.height)
 
 	var imageSize = img.width / numPerRow;
 
 	var volumes = [];
+	var colorsR = [];
+	var colorsG = [];
+	var colorsB = [];
 	var volumeSize = (imageData.data.length/imageSize)/4;
 
 	for(var z = 0; z < imageSize; z++){
 		volumes[z] = new Uint8Array(volumeSize);
-		
+		colorsR[z] = new Uint8Array(volumeSize);
+		colorsG[z] = new Uint8Array(volumeSize);
+		colorsB[z] = new Uint8Array(volumeSize);
 		/*for(var i = 0; i < volumeSize; i++){
 			volumes[z][i] = imageData.data[(i+z*volumeSize)*4];
 		}*/
@@ -47,6 +61,9 @@ function render(){
 				oriY = Math.round(y/numPerRow);
 				oriZ = z; 
 				volumes[z][x+y*imageSize] = imageData.data[(oriX+oriZ*imageSize*numPerRow+oriY*imageSize*imageSize*numPerRow)*4];
+				colorsR[z][x+y*imageSize] = colorData.data[(oriX+oriZ*imageSize*numPerRow+oriY*imageSize*imageSize*numPerRow)*3];
+				colorsG[z][x+y*imageSize] = colorData.data[(oriX+oriZ*imageSize*numPerRow+oriY*imageSize*imageSize*numPerRow)*3 + 1]
+				colorsB[z][x+y*imageSize] = colorData.data[(oriX+oriZ*imageSize*numPerRow+oriY*imageSize*imageSize*numPerRow)*3 + 2]
 				//volumes[z][x+y*imageSize] = imageData.data[(x+z*imageSize+y*imageSize*imageSize)*4];
 			}
 		}
@@ -137,10 +154,16 @@ function render(){
 		}
 
 		var zVolume;
+		var zColorR;
+		var zColorG;
+		var zColorB;
 
 		for(var z = 0; z < zSize; z++){
 			var imageZPos = z*cutImageData.width*4;
 			zVolume = volumes[z];
+			zColorR = colorsR[z];
+			zColorG = colorsG[z];
+			zColorB = colorsB[z];
 			for(var s = 0; s < ~~rayLength; s++){
 				
 				var pos = [
@@ -148,6 +171,9 @@ function render(){
 					startYPositions[s]
 				];
 
+				var outputR = 0.0;
+				var outputG = 0.0;
+				var outputB = 0.0;
 				var output = 0.0;
 				var saturation = 0.0;
 				var x = 0.0;
@@ -161,6 +187,9 @@ function render(){
 					x = ~~(pos[0] + i*increment[0]);
 					y = ~~(pos[1] + i*increment[1]);
 					value = zVolume[x + y*imageSize];
+					colorR = zColorR[x + y*imageSize];
+					colorG = zColorG[x + y*imageSize];
+					colorB = zColorB[x + y*imageSize];
 					
 					if(value < 50){
 						continue;
@@ -169,10 +198,13 @@ function render(){
 					a = squared[value];
 					v = cubed[value];
 					
+					outputR = outputR + (1-saturation) * colorR * a;
+					outputG = outputG + (1-saturation) * colorG * a;
+					outputB = outputB + (1-saturation) * colorB * a;
 					output =     output     + v - v*saturation;
 					saturation = saturation + a - a*saturation;
 					
-					if(saturation >= 0.9){
+					if(saturation >= 0.99){
 						break;
 					}
 					
